@@ -33,6 +33,7 @@ if user:
 
 """
 
+import logging
 import urllib
 import hashlib
 import hmac
@@ -47,10 +48,13 @@ except ImportError:
     from urlparse import parse_qs
 
 
+logger = logging.getLogger(__name__)
+
+
 BASE_URL = "https://graph.facebook.com"
 
 
-__version__ = "1.1.5-alpha"
+__version__ = "1.1.6-alpha"
 
 
 class GraphAPI(object):
@@ -252,8 +256,10 @@ class GraphAPI(object):
             self._requests_stack.append(request)
             return
 
+        url = BASE_URL + '/' + path
+        logger.debug("Request (%s) to %s", method, url)
         response = requests.request(method,
-                                    BASE_URL + '/' + path,
+                                    url,
                                     timeout=self.timeout,
                                     params=args,
                                     data=post_args,
