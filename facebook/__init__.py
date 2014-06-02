@@ -252,6 +252,7 @@ class GraphAPI(object):
             if args:
                 path += ('?' in path and '&' or '?')
                 path += urllib.urlencode(args)
+            logger.debug("Adding request (%s) to batch stack: %s", method, path)
             request['relative_url'] = path
             self._requests_stack.append(request)
             return
@@ -273,6 +274,7 @@ class GraphAPI(object):
         post_args = {'batch': json.dumps(self._requests_stack)}
         if self.access_token:
             post_args['access_token'] = self.access_token
+        logger.debug("Batch request to %s with %s requests", BASE_URL, len(self._requests_stack))
         try:
             batch_response = requests.post(BASE_URL,
                                            post_args,
