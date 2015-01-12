@@ -41,6 +41,7 @@ import hmac
 import base64
 import requests
 import json
+import time
 
 # Find a query string parser
 try:
@@ -53,6 +54,7 @@ logger = logging.getLogger(__name__)
 
 
 BASE_URL = "https://graph.facebook.com"
+ERROR_CODE_TYPE_2 = 2
 
 
 __version__ = "1.1.6-alpha"
@@ -87,10 +89,17 @@ class GraphAPI(object):
     for the active user from the cookie saved by the SDK.
 
     """
-    def __init__(self, access_token=None, timeout=None, follow_paging=True):
+    def __init__(self, access_token=None, timeout=None, follow_paging=True, error_code_2_retries=0, error_code_2_sleeptime=0):
         self.access_token = access_token
         self.timeout = timeout
+        # Indicates whether you want your API requests to automatically do the
+        # serial paging calls for you and return the aggregate results
         self.follow_paging = follow_paging
+        # Sometimes we want to retry our requests when we get error code 2
+        # (Temporary issue due to downtime - retry the operation after waiting.)
+        # via https://developers.facebook.com/docs/graph-api/using-graph-api/
+        self.error_code_2_retries = error_code_2_retries
+        self.error_code_2_sleeptime = error_code_2_sleeptime
         self._batch_request = False
 
     def __enter__(self):
@@ -260,17 +269,46 @@ class GraphAPI(object):
             return
 
         url = BASE_URL + '/' + path
-        logger.debug("Request (%s) to %s", method, url)
-        response = requests.request(method,
-                                    url,
-                                    timeout=self.timeout,
-                                    params=args,
-                                    data=post_args,
-                                    files=files)
-        result = self._handle_response(response.status_code,
-                                       response.headers,
-                                       response.content,
-                                       response.url)
+
+        def _do_request_response():
+            logger.debug("Request (%s) to %s", method, url)
+            response = requests.request(method,
+                                        url,
+                                        timeout=self.timeout,
+                                        params=args,
+                                        data=post_args,
+                                        files=files)
+            return self._handle_response(response.status_code,
+                                         response.headers,
+                                         response.content,
+                                         response.url)
+
+        def _do_request_response_with_retries():
+            try:
+                return _do_request_response()
+            except GraphAPIError as e:
+                logger.warning("Caught GraphAPIError %s (type=%s)", e, e.type)
+                if e.type != ERROR_CODE_TYPE_2 or not self.error_code_2_retries:
+                    raise e
+            logger.warning("Request resulted in error code 2, trying again %s time%s",
+                           self.error_code_2_retries,
+                           self.error_code_2_retries != 1 and 's' or '',
+                           extra={'method': method, 'url': url})
+            for attempt in xrange(1, self.error_code_2_retries + 1):
+                logger.debug("Attempt %s (of %s)",
+                                     attempt,
+                                     self.error_code_2_retries)
+                if self.error_code_2_sleeptime:
+                    logger.debug("Sleeping for %s seconds before retrying after error code 2",
+                                 self.error_code_2_sleeptime)
+                    time.sleep(self.error_code_2_sleeptime)
+                try:
+                    return _do_request_response()
+                except GraphAPIError as e:
+                    if e.type != ERROR_CODE_TYPE_2 or attempt == self.error_code_2_retries:
+                        raise e
+
+        result = _do_request_response_with_retries()
         data = result.get('data') or []
         if self.follow_paging:
             next_result = copy.deepcopy(result)
@@ -282,14 +320,42 @@ class GraphAPI(object):
                 next_url = (next_result.get('paging') or {}).get('next')
                 if not next_url:
                     break
-                logger.debug("Paged request (%s) to %s", method, next_url)
-                response = requests.request(method,
-                                            next_url,
-                                            timeout=self.timeout)
-                next_result = self._handle_response(response.status_code,
-                                                    response.headers,
-                                                    response.content,
-                                                    response.url)
+                def _do_paged_request_response():
+                    logger.debug("Paged request (%s) to %s", method, next_url)
+                    response = requests.request(method,
+                                                next_url,
+                                                timeout=self.timeout)
+                    return self._handle_response(response.status_code,
+                                                 response.headers,
+                                                 response.content,
+                                                 response.url)
+
+                def _do_paged_request_response_with_retries():
+                    try:
+                        return _do_paged_request_response()
+                    except GraphAPIError as e:
+                        logger.warning("Caught GraphAPIError %s (type=%s)", e, e.type)
+                        if e.type != ERROR_CODE_TYPE_2 or not self.error_code_2_retries:
+                            raise e
+                    logger.warning("Paged request resulted in error code 2, trying again %s time%s",
+                                   self.error_code_2_retries,
+                                   self.error_code_2_retries != 1 and 's' or '',
+                                   extra={'method': method, 'url': next_url})
+                    for attempt in xrange(1, self.error_code_2_retries + 1):
+                        logger.debug("Attempt %s (of %s)",
+                                     attempt,
+                                     self.error_code_2_retries)
+                        if self.error_code_2_sleeptime:
+                            logger.debug("Sleeping for %s seconds before retrying after error code 2",
+                                         self.error_code_2_sleeptime)
+                            time.sleep(self.error_code_2_sleeptime)
+                        try:
+                            return _do_paged_request_response()
+                        except GraphAPIError as e:
+                            if e.type != ERROR_CODE_TYPE_2 or attempt == self.error_code_2_retries:
+                                raise e
+
+                next_result = _do_paged_request_response_with_retries()
                 data += (next_result.get('data') or [])
             if data:
                 result.update({'data': data})
