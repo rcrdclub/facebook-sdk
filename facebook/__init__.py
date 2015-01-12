@@ -274,6 +274,10 @@ class GraphAPI(object):
         data = result.get('data') or []
         if self.follow_paging:
             next_result = copy.deepcopy(result)
+            # If we do follow paging, don't return the paging data as part of
+            # the result
+            if 'paging' in result:
+                del result['paging']
             while True:
                 next_url = (next_result.get('paging') or {}).get('next')
                 if not next_url:
