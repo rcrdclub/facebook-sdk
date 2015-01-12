@@ -87,9 +87,10 @@ class GraphAPI(object):
     for the active user from the cookie saved by the SDK.
 
     """
-    def __init__(self, access_token=None, timeout=None):
+    def __init__(self, access_token=None, timeout=None, follow_paging=True):
         self.access_token = access_token
         self.timeout = timeout
+        self.follow_paging = follow_paging
         self._batch_request = False
 
     def __enter__(self):
@@ -227,7 +228,7 @@ class GraphAPI(object):
         return result
 
     def request(
-            self, path, args=None, post_args=None, files=None, method=None, follow_paging=True):
+            self, path, args=None, post_args=None, files=None, method=None):
         """Fetches the given path in the Graph API.
 
         We translate args to a valid query string. If post_args is
@@ -271,7 +272,7 @@ class GraphAPI(object):
                                        response.content,
                                        response.url)
         data = result.get('data') or []
-        if follow_paging:
+        if self.follow_paging:
             next_result = copy.deepcopy(result)
             while True:
                 next_url = (next_result.get('paging') or {}).get('next')
