@@ -33,6 +33,7 @@ if user:
 
 """
 
+import copy
 import logging
 import urllib
 import hashlib
@@ -271,20 +272,23 @@ class GraphAPI(object):
                                        response.url)
         data = result.get('data') or []
         if follow_paging:
+            next_result = copy.deepcopy(result)
             while True:
-                next_url = (result.get('paging') or {}).get('next')
+                next_url = (next_result.get('paging') or {}).get('next')
                 if not next_url:
                     break
                 logger.info("Paged request (%s) to %s", method, next_url)
                 response = requests.request(method,
                                             next_url,
                                             timeout=self.timeout)
-                result = self._handle_response(response.status_code,
-                                               response.headers,
-                                               response.content,
-                                               response.url)
-                data += (result.get('data') or [])
-        return {'data': data}
+                next_result = self._handle_response(response.status_code,
+                                                    response.headers,
+                                                    response.content,
+                                                    response.url)
+                data += (next_result.get('data') or [])
+            if data:
+                result.update({'data': data})
+        return result
 
     def execute(self):
         post_args = {'batch': json.dumps(self._requests_stack)}
