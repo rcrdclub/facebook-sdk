@@ -278,7 +278,7 @@ class GraphAPI(object):
                 next_url = (next_result.get('paging') or {}).get('next')
                 if not next_url:
                     break
-                logger.info("Paged request (%s) to %s", method, next_url)
+                logger.debug("Paged request (%s) to %s", method, next_url)
                 response = requests.request(method,
                                             next_url,
                                             timeout=self.timeout)
