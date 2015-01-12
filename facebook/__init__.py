@@ -226,7 +226,7 @@ class GraphAPI(object):
         return result
 
     def request(
-            self, path, args=None, post_args=None, files=None, method=None):
+            self, path, args=None, post_args=None, files=None, method=None, follow_paging=True):
         """Fetches the given path in the Graph API.
 
         We translate args to a valid query string. If post_args is
@@ -265,10 +265,26 @@ class GraphAPI(object):
                                     params=args,
                                     data=post_args,
                                     files=files)
-        return self._handle_response(response.status_code,
-                                     response.headers,
-                                     response.content,
-                                     response.url)
+        result = self._handle_response(response.status_code,
+                                       response.headers,
+                                       response.content,
+                                       response.url)
+        data = result.get('data') or []
+        if follow_paging:
+            while True:
+                next_url = (result.get('paging') or {}).get('next')
+                if not next_url:
+                    break
+                logger.info("Paged request (%s) to %s", method, next_url)
+                response = requests.request(method,
+                                            next_url,
+                                            timeout=self.timeout)
+                result = self._handle_response(response.status_code,
+                                               response.headers,
+                                               response.content,
+                                               response.url)
+                data += (result.get('data') or [])
+        return {'data': data}
 
     def execute(self):
         post_args = {'batch': json.dumps(self._requests_stack)}
