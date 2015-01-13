@@ -57,9 +57,6 @@ BASE_URL = "https://graph.facebook.com"
 ERROR_CODE_TYPE_2 = 2
 
 
-__version__ = "1.1.6-alpha"
-
-
 class GraphAPI(object):
     """A client for the Facebook Graph API.
 
