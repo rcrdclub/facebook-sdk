@@ -434,10 +434,29 @@ class GraphAPI(object):
             "client_id": app_id,
             "client_secret": app_secret,
             "grant_type": "fb_exchange_token",
-            "fb_exchange_token": self.access_token,
-        }
+            "fb_exchange_token": self.access_token}
 
         return self.request("oauth/access_token", args=args)
+
+    def get_access_token_info(self, input_token=None):
+        """
+        Gets info about tokens/debugging
+
+        When working with an access token, you may need to check what
+        information is associated with it, such as its user or expiry. To get
+        this information you can use our debug tool, or you can use the API
+        endpoint.
+
+        https://developers.facebook.com/docs/facebook-login/access-tokens#extending
+        """
+        if not input_token:
+            # Default to the existing access token
+            input_token = self.access_token
+        args = {
+            "input_token": input_token,
+            "access_token": self.access_token}
+
+        return self.request("debug_token", args)
 
 
 class GraphAPIError(Exception):
