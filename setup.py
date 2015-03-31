@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from setuptools import setup
 
-VERSION = "1.3.0-alpha"
+VERSION = "1.3.1-alpha"
 
 setup(
     name='facebook-sdk',

@@ -222,15 +222,17 @@ class GraphAPI(object):
                     if "expires" in query_str:
                         result["expires"] = query_str["expires"][0]
                 else:
-                    raise GraphAPIError(json.loads(body))
+                    raise GraphAPIError(json.loads(body), status_code)
             else:
-                raise GraphAPIError('Body was not JSON, image, or querystring')
+                raise GraphAPIError('Body was not JSON, image, or querystring',
+                                    status_code)
         if status_code >= 400:
             if result:
-                raise GraphAPIError(result)
-            raise GraphAPIError("Received status_code %s but body type could not be determined" % status_code)
+                raise GraphAPIError(result, status_code)
+            err_msg = "Received status_code %s but body type could not be determined" % status_code
+            raise GraphAPIError(err_msg, status_code)
         if result and isinstance(result, dict) and result.get("error"):
-            raise GraphAPIError(result)
+            raise GraphAPIError(result, status_code)
         return result
 
     def request(
@@ -460,12 +462,15 @@ class GraphAPI(object):
 
 
 class GraphAPIError(Exception):
-    def __init__(self, result):
+    def __init__(self, result, status_code=None):
         self.result = result
-        try:
-            self.type = result["error_code"]
-        except:
-            self.type = ""
+        if status_code:
+            self.type = status_code
+        else:
+            try:
+                self.type = result["error_code"]
+            except:
+                self.type = ""
 
         # OAuth 2.0 Draft 10
         try:
