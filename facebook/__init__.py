@@ -246,6 +246,15 @@ class GraphAPI(object):
         """
         args = args or {}
 
+        if 'base_url' in args:
+            base_url = args['base_url']
+            del args['base_url']
+        elif post_args and 'base_url' in post_args:
+            base_url = post_args['base_url']
+            del post_args['base_url']
+        else:
+            base_url = BASE_URL
+
         if self.access_token:
             if post_args is not None:
                 post_args["access_token"] = self.access_token
@@ -267,7 +276,7 @@ class GraphAPI(object):
             self._requests_stack.append(request)
             return
 
-        url = BASE_URL + '/' + path
+        url = base_url + '/' + path
 
         def _do_request_response():
             logger.debug("Request (%s) to %s", method, url)
