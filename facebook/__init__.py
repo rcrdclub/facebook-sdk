@@ -86,9 +86,10 @@ class GraphAPI(object):
     for the active user from the cookie saved by the SDK.
 
     """
-    def __init__(self, access_token=None, timeout=None, follow_paging=True, error_code_2_retries=0, error_code_2_sleeptime=0):
+    def __init__(self, access_token=None, timeout=None, base_url=None, follow_paging=True, error_code_2_retries=0, error_code_2_sleeptime=0):
         self.access_token = access_token
         self.timeout = timeout
+        self.base_url = base_url or BASE_URL
         # Indicates whether you want your API requests to automatically do the
         # serial paging calls for you and return the aggregate results
         self.follow_paging = follow_paging
@@ -246,15 +247,6 @@ class GraphAPI(object):
         """
         args = args or {}
 
-        if 'base_url' in args:
-            base_url = args['base_url']
-            del args['base_url']
-        elif post_args and 'base_url' in post_args:
-            base_url = post_args['base_url']
-            del post_args['base_url']
-        else:
-            base_url = BASE_URL
-
         if self.access_token:
             if post_args is not None:
                 post_args["access_token"] = self.access_token
@@ -276,7 +268,7 @@ class GraphAPI(object):
             self._requests_stack.append(request)
             return
 
-        url = base_url + '/' + path
+        url = self.base_url + '/' + path
 
         def _do_request_response():
             logger.debug("Request (%s) to %s", method, url)
@@ -373,9 +365,11 @@ class GraphAPI(object):
         post_args = {'batch': json.dumps(self._requests_stack)}
         if self.access_token:
             post_args['access_token'] = self.access_token
-        logger.debug("Batch request to %s with %s requests", BASE_URL, len(self._requests_stack))
+        logger.debug("Batch request to %s with %s requests",
+                     self.base_url,
+                     len(self._requests_stack))
         try:
-            batch_response = requests.post(BASE_URL,
+            batch_response = requests.post(self.base_url,
                                            post_args,
                                            timeout=self.timeout)
             batch_response.raise_for_status()
