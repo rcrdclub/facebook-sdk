@@ -311,6 +311,7 @@ class GraphAPI(object):
         result = _do_request_response_with_retries()
         data = result.get('data') or []
         if self.follow_paging:
+            pages_seen = 1
             next_result = copy.deepcopy(result)
             # If we do follow paging, don't return the paging data as part of
             # the result
@@ -358,10 +359,13 @@ class GraphAPI(object):
                     next_result = _do_paged_request_response_with_retries()
                 except GraphAPIError as e:
                     e.data = data
+                    e.pages_seen = pages_seen
                     raise e
                 data += (next_result.get('data') or [])
+                pages_seen += 1
             if data:
                 result.update({'data': data})
+            result['pages_seen'] = pages_seen
         return result
 
     def execute(self):
