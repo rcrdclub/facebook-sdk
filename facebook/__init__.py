@@ -354,8 +354,11 @@ class GraphAPI(object):
                         except GraphAPIError as e:
                             if e.type != ERROR_CODE_TYPE_2 or attempt == self.error_code_2_retries:
                                 raise e
-
-                next_result = _do_paged_request_response_with_retries()
+                try:
+                    next_result = _do_paged_request_response_with_retries()
+                except GraphAPIError as e:
+                    e.data = data
+                    raise e
                 data += (next_result.get('data') or [])
             if data:
                 result.update({'data': data})
