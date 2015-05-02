@@ -129,6 +129,7 @@ class GraphAPI(object):
         """Fetchs the given object from the graph, using POST.
         https://developers.facebook.com/docs/graph-api/using-graph-api/v2.3#largerequests
         """
+        args["method"] = "GET"
         return self.request(id, args, method="POST")
 
     def post_objects(self, ids, **args):
@@ -138,6 +139,7 @@ class GraphAPI(object):
         We return a map from ID to object. If any of the IDs are
         invalid, we raise an exception.
         """
+        args["method"] = "GET"
         args["ids"] = ",".join(ids)
         return self.request("", args, method="POST")
 
@@ -145,6 +147,7 @@ class GraphAPI(object):
         """Fetchs the connections for given object, using POST.
         https://developers.facebook.com/docs/graph-api/using-graph-api/v2.3#largerequests
         """
+        args["method"] = "GET"
         return self.request(id + "/" + connection_name, args, method="POST")
 
     def put_object(self, parent_object, connection_name, **data):
