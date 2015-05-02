@@ -125,6 +125,28 @@ class GraphAPI(object):
         """Fetchs the connections for given object."""
         return self.request(id + "/" + connection_name, args)
 
+    def post_object(self, id, **args):
+        """Fetchs the given object from the graph, using POST.
+        https://developers.facebook.com/docs/graph-api/using-graph-api/v2.3#largerequests
+        """
+        return self.request(id, args, method="POST")
+
+    def post_objects(self, ids, **args):
+        """Fetchs all of the given object from the graph, using POST.
+        https://developers.facebook.com/docs/graph-api/using-graph-api/v2.3#largerequests
+
+        We return a map from ID to object. If any of the IDs are
+        invalid, we raise an exception.
+        """
+        args["ids"] = ",".join(ids)
+        return self.request("", args, method="POST")
+
+    def post_connections(self, id, connection_name, **args):
+        """Fetchs the connections for given object, using POST.
+        https://developers.facebook.com/docs/graph-api/using-graph-api/v2.3#largerequests
+        """
+        return self.request(id + "/" + connection_name, args, method="POST")
+
     def put_object(self, parent_object, connection_name, **data):
         """Writes the given object to the graph, connected to the given parent.
 
