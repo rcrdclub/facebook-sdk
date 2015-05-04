@@ -406,12 +406,17 @@ class GraphAPI(object):
                                            timeout=self.timeout)
             batch_response.raise_for_status()
         except requests.HTTPError as e:
-            if e.response:
+            response = getattr(e, 'response', None)
+            if isinstance(response, requests.Response):
+                error_data = None
                 try:
-                    batch_response = e.response.json()
-                    raise GraphAPIError(batch_response)
+                    # Best-effort attempt to extract more specific error data
+                    error_data = response.json()
                 except:
                     pass
+                if error_data:
+                    raise GraphAPIError(error_data)
+            # Fallback to just creating a GraphAPIError obj out of `e`
             raise GraphAPIError(e)
         responses = []
         for response in batch_response.json():
